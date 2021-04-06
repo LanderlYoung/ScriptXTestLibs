@@ -1111,6 +1111,10 @@ typedef enum JSStrictEqModeEnum {
 static BOOL js_strict_eq2(JSContext *ctx, JSValue op1, JSValue op2,
                           JSStrictEqModeEnum eq_mode);
 static BOOL js_strict_eq(JSContext *ctx, JSValue op1, JSValue op2);
+int JS_StrictEqual(JSContext *ctx, JSValueConst op1, JSValueConst op2)
+{
+    return js_strict_eq(ctx, JS_DupValue(ctx, op1), JS_DupValue(ctx, op2));
+}
 static BOOL js_same_value(JSContext *ctx, JSValueConst op1, JSValueConst op2);
 static BOOL js_same_value_zero(JSContext *ctx, JSValueConst op1, JSValueConst op2);
 static JSValue JS_ToObject(JSContext *ctx, JSValueConst val);
@@ -54033,4 +54037,46 @@ void JS_AddIntrinsicTypedArrays(JSContext *ctx)
 #ifdef CONFIG_ATOMICS
     JS_AddIntrinsicAtomics(ctx);
 #endif
+}
+
+/************* WeakRef ***********/
+
+JSValue JS_NewWeakRef(JSContext* ctx, JSValueConst v)
+{
+    if (JS_IsObject(v)) {
+        JSValue map = js_map_constructor(ctx, JS_UNDEFINED, 0, NULL, MAGIC_SET | MAGIC_WEAK);
+        if (JS_IsException(map)) return JS_EXCEPTION;
+        // check
+        JSValue ret = js_map_set(ctx, map, 1, &v, MAGIC_SET | MAGIC_WEAK);
+        if (JS_IsException(ret)) return JS_EXCEPTION;
+        JS_FreeValue(ctx, ret);
+        return map;
+    } else {
+        return JS_DupValue(ctx, v);
+    }
+}
+
+static JSValue js_map_get_first_key(JSContext *ctx, JSValueConst this_val)
+{
+    JSMapState *s = JS_GetOpaque2(ctx, this_val, JS_CLASS_WEAKSET);
+    JSMapRecord *mr;
+    JSValueConst key = JS_UNDEFINED;
+    struct list_head *el;
+
+    if (!s) return JS_EXCEPTION;
+    el = s->records.next;
+    if (el != &(s->records)) {
+        mr = list_entry(el, JSMapRecord, link);
+        key = mr->key;
+    }
+    return JS_DupValue(ctx, key);
+}
+
+JSValue JS_GetWeakRef(JSContext* ctx, JSValueConst w)
+{
+    if (JS_IsObject(w)) {
+        return js_map_get_first_key(ctx, w);
+    } else {
+        return JS_DupValue(ctx, w);
+    }
 }

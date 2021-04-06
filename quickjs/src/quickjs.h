@@ -678,6 +678,11 @@ static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
     return (JSValue)v;
 }
 
+#define QUICK_JS_HAS_SCRIPTX_PATCH
+JSValue JS_NewWeakRef(JSContext* ctx, JSValueConst v);
+JSValue JS_GetWeakRef(JSContext* ctx, JSValueConst w);
+int JS_StrictEqual(JSContext *ctx, JSValueConst op1, JSValueConst op2);
+
 int JS_ToBool(JSContext *ctx, JSValueConst val); /* return -1 for JS_EXCEPTION */
 int JS_ToInt32(JSContext *ctx, int32_t *pres, JSValueConst val);
 static inline int JS_ToUint32(JSContext *ctx, uint32_t *pres, JSValueConst val)
