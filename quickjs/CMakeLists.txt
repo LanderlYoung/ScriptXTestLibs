@@ -46,4 +46,4 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 
 endif ()
 
-target_include_directories(QuickJs INTERFACE ${QUICK_JS_DIR})
+target_include_directories(QuickJs INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
