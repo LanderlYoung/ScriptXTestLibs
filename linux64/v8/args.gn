@@ -1,0 +1,9 @@
+is_debug = false
+target_cpu = "x64"
+v8_monolithic=true
+icu_use_data_file=false
+v8_use_external_startup_data=false
+#is_clang = false
+use_sysroot=false
+use_glib=false
+use_custom_libcxx=false
