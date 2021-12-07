@@ -59,7 +59,6 @@ add_library(Lua STATIC
     ${LUA_DIR}/lua.c
     ${LUA_DIR}/lua.h
     ${LUA_DIR}/lua.hpp
-    ${LUA_DIR}/luac.c
     ${LUA_DIR}/luaconf.h
     ${LUA_DIR}/lualib.h
     ${LUA_DIR}/lundump.c
