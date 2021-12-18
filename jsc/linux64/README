@@ -1,0 +1,13 @@
+url:
+git://git.webkit.org/WebKit.git
+
+version:
+6f8fb493c2df5593e31847243b860900e819cd7d
+
+compile command:
+Tools/Scripts/build-webkit --jsc-only --cmakeargs="-DENABLE_STATIC_JSC=ON -DUSE_THIN_ARCHIVES=OFF"
+
+out:
+WebKitBuild/Release/lib/
+WebKitBuild/Release/JavaScriptCore/Headers
+
