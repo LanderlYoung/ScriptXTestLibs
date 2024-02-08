@@ -28,11 +28,25 @@ endif
 # Windows cross compilation from Linux
 #CONFIG_WIN32=y
 # use link time optimization (smaller and faster executables but slower build)
-CONFIG_LTO=y
+#CONFIG_LTO=y
 # consider warnings as errors (for development)
 #CONFIG_WERROR=y
 # force 32 bit build for some utilities
 #CONFIG_M32=y
+# cosmopolitan build (see https://github.com/jart/cosmopolitan)
+#CONFIG_COSMO=y
+
+# installation directory
+PREFIX?=/usr/local
+
+# use the gprof profiler
+#CONFIG_PROFILE=y
+# use address sanitizer
+#CONFIG_ASAN=y
+# include the code for BigFloat/BigDecimal, math mode and faster large integers
+CONFIG_BIGNUM=y
+
+OBJDIR=.obj
 
 ifdef CONFIG_DARWIN
 # use clang instead of gcc
@@ -40,33 +54,22 @@ CONFIG_CLANG=y
 CONFIG_DEFAULT_AR=y
 endif
 
-# installation directory
-prefix=/usr/local
-
-# use the gprof profiler
-#CONFIG_PROFILE=y
-# use address sanitizer
-#CONFIG_ASAN=y
-# include the code for BigInt/BigFloat/BigDecimal and math mode
-CONFIG_BIGNUM=y
-
-OBJDIR=.obj
-
 ifdef CONFIG_WIN32
   ifdef CONFIG_M32
-    CROSS_PREFIX=i686-w64-mingw32-
+    CROSS_PREFIX?=i686-w64-mingw32-
   else
-    CROSS_PREFIX=x86_64-w64-mingw32-
+    CROSS_PREFIX?=x86_64-w64-mingw32-
   endif
   EXE=.exe
 else
-  CROSS_PREFIX=
+  CROSS_PREFIX?=
   EXE=
 endif
+
 ifdef CONFIG_CLANG
   HOST_CC=clang
   CC=$(CROSS_PREFIX)clang
-  CFLAGS=-g -Wall -MMD -MF $(OBJDIR)/$(@F).d
+  CFLAGS+=-g -Wall -MMD -MF $(OBJDIR)/$(@F).d
   CFLAGS += -Wextra
   CFLAGS += -Wno-sign-compare
   CFLAGS += -Wno-missing-field-initializers
@@ -84,10 +87,18 @@ ifdef CONFIG_CLANG
       AR=$(CROSS_PREFIX)ar
     endif
   endif
+else ifdef CONFIG_COSMO
+  CONFIG_LTO=
+  HOST_CC=gcc
+  CC=cosmocc
+  # cosmocc does not correct support -MF
+  CFLAGS=-g -Wall #-MMD -MF $(OBJDIR)/$(@F).d
+  CFLAGS += -Wno-array-bounds -Wno-format-truncation
+  AR=cosmoar
 else
   HOST_CC=gcc
   CC=$(CROSS_PREFIX)gcc
-  CFLAGS=-g -Wall -MMD -MF $(OBJDIR)/$(@F).d
+  CFLAGS+=-g -Wall -MMD -MF $(OBJDIR)/$(@F).d
   CFLAGS += -Wno-array-bounds -Wno-format-truncation
   ifdef CONFIG_LTO
     AR=$(CROSS_PREFIX)gcc-ar
@@ -95,7 +106,8 @@ else
     AR=$(CROSS_PREFIX)ar
   endif
 endif
-STRIP=$(CROSS_PREFIX)strip
+STRIP?=$(CROSS_PREFIX)strip
+CFLAGS+=-fwrapv # ensure that signed overflows behave as expected
 ifdef CONFIG_WERROR
 CFLAGS+=-Werror
 endif
@@ -112,7 +124,11 @@ CFLAGS_DEBUG=$(CFLAGS) -O0
 CFLAGS_SMALL=$(CFLAGS) -Os
 CFLAGS_OPT=$(CFLAGS) -O2
 CFLAGS_NOLTO:=$(CFLAGS_OPT)
-LDFLAGS=-g
+ifdef CONFIG_COSMO
+LDFLAGS+=-s # better to strip by default
+else
+LDFLAGS+=-g
+endif
 ifdef CONFIG_LTO
 CFLAGS_SMALL+=-flto
 CFLAGS_OPT+=-flto
@@ -130,6 +146,12 @@ ifdef CONFIG_WIN32
 LDEXPORT=
 else
 LDEXPORT=-rdynamic
+endif
+
+ifndef CONFIG_COSMO
+ifndef CONFIG_DARWIN
+CONFIG_SHARED_LIBS=y # building shared libraries is supported
+endif
 endif
 
 PROGS=qjs$(EXE) qjsc$(EXE) run-test262
@@ -154,23 +176,21 @@ endif
 
 # examples
 ifeq ($(CROSS_PREFIX),)
-ifdef CONFIG_ASAN
-PROGS+=
-else
-PROGS+=examples/hello examples/hello_module examples/test_fib
-ifndef CONFIG_DARWIN
-PROGS+=examples/fib.so examples/point.so
+PROGS+=examples/hello
+ifndef CONFIG_ASAN
+PROGS+=examples/hello_module
 endif
+ifdef CONFIG_SHARED_LIBS
+PROGS+=examples/test_fib examples/fib.so examples/point.so
 endif
 endif
 
 all: $(OBJDIR) $(OBJDIR)/quickjs.check.o $(OBJDIR)/qjs.check.o $(PROGS)
 
-QJS_LIB_OBJS=$(OBJDIR)/quickjs.o $(OBJDIR)/libregexp.o $(OBJDIR)/libunicode.o $(OBJDIR)/cutils.o $(OBJDIR)/quickjs-libc.o
+QJS_LIB_OBJS=$(OBJDIR)/quickjs.o $(OBJDIR)/libregexp.o $(OBJDIR)/libunicode.o $(OBJDIR)/cutils.o $(OBJDIR)/quickjs-libc.o $(OBJDIR)/libbf.o 
 
 QJS_OBJS=$(OBJDIR)/qjs.o $(OBJDIR)/repl.o $(QJS_LIB_OBJS)
 ifdef CONFIG_BIGNUM
-QJS_LIB_OBJS+=$(OBJDIR)/libbf.o 
 QJS_OBJS+=$(OBJDIR)/qjscalc.o
 endif
 
@@ -201,11 +221,11 @@ $(QJSC): $(OBJDIR)/qjsc.host.o \
 
 endif #CROSS_PREFIX
 
-QJSC_DEFINES:=-DCONFIG_CC=\"$(QJSC_CC)\" -DCONFIG_PREFIX=\"$(prefix)\"
+QJSC_DEFINES:=-DCONFIG_CC=\"$(QJSC_CC)\" -DCONFIG_PREFIX=\"$(PREFIX)\"
 ifdef CONFIG_LTO
 QJSC_DEFINES+=-DCONFIG_LTO
 endif
-QJSC_HOST_DEFINES:=-DCONFIG_CC=\"$(HOST_CC)\" -DCONFIG_PREFIX=\"$(prefix)\"
+QJSC_HOST_DEFINES:=-DCONFIG_CC=\"$(HOST_CC)\" -DCONFIG_PREFIX=\"$(PREFIX)\"
 
 $(OBJDIR)/qjsc.o: CFLAGS+=$(QJSC_DEFINES)
 $(OBJDIR)/qjsc.host.o: CFLAGS+=$(QJSC_HOST_DEFINES)
@@ -247,11 +267,6 @@ $(OBJDIR)/libunicode.o $(OBJDIR)/libunicode.m32.o $(OBJDIR)/libunicode.m32s.o \
 libunicode-table.h: unicode_gen
 	./unicode_gen unicode $@
 endif
-
-hello: quickjs.c quickjs-libc.c examples/hello.cpp
-	clang -DCONFIG_VERSION=\"2021-03-27\" -DCONFIG_BIGNUM  \
-	quickjs.c quickjs-libc.c cutils.c libbf.h libunicode.c unicode_gen.c \
-	-I. examples/hello.cpp -o $(OBJDIR)/hello
 
 run-test262: $(OBJDIR)/run-test262.o $(QJS_LIB_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -303,17 +318,17 @@ clean:
 	rm -rf run-test262-debug run-test262-32
 
 install: all
-	mkdir -p "$(DESTDIR)$(prefix)/bin"
-	$(STRIP) qjs qjsc
-	install -m755 qjs qjsc "$(DESTDIR)$(prefix)/bin"
-	ln -sf qjs "$(DESTDIR)$(prefix)/bin/qjscalc"
-	mkdir -p "$(DESTDIR)$(prefix)/lib/quickjs"
-	install -m644 libquickjs.a "$(DESTDIR)$(prefix)/lib/quickjs"
+	mkdir -p "$(DESTDIR)$(PREFIX)/bin"
+	$(STRIP) qjs$(EXE) qjsc$(EXE)
+	install -m755 qjs$(EXE) qjsc$(EXE) "$(DESTDIR)$(PREFIX)/bin"
+	ln -sf qjs$(EXE) "$(DESTDIR)$(PREFIX)/bin/qjscalc$(EXE)"
+	mkdir -p "$(DESTDIR)$(PREFIX)/lib/quickjs"
+	install -m644 libquickjs.a "$(DESTDIR)$(PREFIX)/lib/quickjs"
 ifdef CONFIG_LTO
-	install -m644 libquickjs.lto.a "$(DESTDIR)$(prefix)/lib/quickjs"
+	install -m644 libquickjs.lto.a "$(DESTDIR)$(PREFIX)/lib/quickjs"
 endif
-	mkdir -p "$(DESTDIR)$(prefix)/include/quickjs"
-	install -m644 quickjs.h quickjs-libc.h "$(DESTDIR)$(prefix)/include/quickjs"
+	mkdir -p "$(DESTDIR)$(PREFIX)/include/quickjs"
+	install -m644 quickjs.h quickjs-libc.h "$(DESTDIR)$(PREFIX)/include/quickjs"
 
 ###############################################################################
 # examples
@@ -322,10 +337,7 @@ endif
 HELLO_SRCS=examples/hello.js
 HELLO_OPTS=-fno-string-normalize -fno-map -fno-promise -fno-typedarray \
            -fno-typedarray -fno-regexp -fno-json -fno-eval -fno-proxy \
-           -fno-date -fno-module-loader
-ifdef CONFIG_BIGNUM
-HELLO_OPTS+=-fno-bigint
-endif
+           -fno-date -fno-module-loader -fno-bigint
 
 hello.c: $(QJSC) $(HELLO_SRCS)
 	$(QJSC) -e $(HELLO_OPTS) -o $@ $(HELLO_SRCS)
@@ -382,7 +394,7 @@ doc/%.html: doc/%.html.pre
 ###############################################################################
 # tests
 
-ifndef CONFIG_DARWIN
+ifdef CONFIG_SHARED_LIBS
 test: tests/bjson.so examples/point.so
 endif
 ifdef CONFIG_M32
@@ -396,7 +408,7 @@ test: qjs
 	./qjs tests/test_loop.js
 	./qjs tests/test_std.js
 	./qjs tests/test_worker.js
-ifndef CONFIG_DARWIN
+ifdef CONFIG_SHARED_LIBS
 ifdef CONFIG_BIGNUM
 	./qjs --bignum tests/test_bjson.js
 else
