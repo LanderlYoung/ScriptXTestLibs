@@ -1,0 +1,62 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index c6e78f23819..534d73e3f7b 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -361,52 +361,51 @@ class Platform {
+    */
+   virtual void CallDelayedOnWorkerThread(std::unique_ptr<Task> task,
+                                          double delay_in_seconds) = 0;
+ 
+   /**
+    * Schedules a task to be invoked on a foreground thread wrt a specific
+    * |isolate|. Tasks posted for the same isolate should be execute in order of
+    * scheduling. The definition of "foreground" is opaque to V8.
+    */
+   V8_DEPRECATED("Use a taskrunner acquired by GetForegroundTaskRunner instead.")
+-  virtual void CallOnForegroundThread(Isolate* isolate, Task* task) = 0;
++  virtual void CallOnForegroundThread(Isolate* isolate, Task* task) { abort(); }
+ 
+   /**
+    * Schedules a task to be invoked on a foreground thread wrt a specific
+    * |isolate| after the given number of seconds |delay_in_seconds|.
+    * Tasks posted for the same isolate should be execute in order of
+    * scheduling. The definition of "foreground" is opaque to V8.
+    */
+   V8_DEPRECATED("Use a taskrunner acquired by GetForegroundTaskRunner instead.")
+   virtual void CallDelayedOnForegroundThread(Isolate* isolate, Task* task,
+-                                             double delay_in_seconds) = 0;
++                                             double delay_in_seconds) {
++    abort();
++  }
+ 
+   /**
+    * Schedules a task to be invoked on a foreground thread wrt a specific
+    * |isolate| when the embedder is idle.
+    * Requires that SupportsIdleTasks(isolate) is true.
+    * Idle tasks may be reordered relative to other task types and may be
+    * starved for an arbitrarily long time if no idle time is available.
+    * The definition of "foreground" is opaque to V8.
+    */
+   V8_DEPRECATED("Use a taskrunner acquired by GetForegroundTaskRunner instead.")
+   virtual void CallIdleOnForegroundThread(Isolate* isolate, IdleTask* task) {
+-    // This must be overriden if |IdleTasksEnabled()|.
+     abort();
+   }
+ 
+   /**
+    * Returns true if idle tasks are enabled for the given |isolate|.
+    */
+-  virtual bool IdleTasksEnabled(Isolate* isolate) {
+-    return false;
+-  }
++  virtual bool IdleTasksEnabled(Isolate* isolate) { return false; }
+ 
+   /**
+    * Monotonically increasing time in seconds from an arbitrary fixed point in
+    * the past. This function is expected to return at least
+    * millisecond-precision values. For this reason,
+    * it is recommended that the fixed point be no further in the past than
+    * the epoch.
+    **/
+   virtual double MonotonicallyIncreasingTime() = 0;
+ 

@@ -1,0 +1,91 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 7bb79a18414..1f1497f6ccd 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -209,30 +209,55 @@ class JobHandle {
+    * priority.
+    */
+   virtual void Join() = 0;
+ 
+   /**
+    * Forces all existing workers to yield ASAP. Waits until they have all
+    * returned from the Job's callback before returning.
+    */
+   virtual void Cancel() = 0;
+ 
++  /*
++   * Forces all existing workers to yield ASAP but doesn’t wait for them.
++   * Warning, this is dangerous if the Job's callback is bound to or has access
++   * to state which may be deleted after this call.
++   * TODO(etiennep): Cleanup once implemented by all embedders.
++   */
++  virtual void CancelAndDetach() { Cancel(); }
++
+   /**
+-   * Returns true if there's no work pending and no worker running.
++   * Returns true if there's currently no work pending and no worker running.
++   * TODO(etiennep): Deprecate IsCompleted in favor of IsActive once implemented
++   * by all embedders.
+    */
+   virtual bool IsCompleted() = 0;
++  virtual bool IsActive() { return !IsCompleted(); }
+ 
+   /**
+    * Returns true if associated with a Job and other methods may be called.
+-   * Returns false after Join() or Cancel() was called.
++   * Returns false after Join() or Cancel() was called. This may return true
++   * even if no workers are running and IsCompleted() returns true
++   * TODO(etiennep): Deprecate IsRunning in favor of IsValid once implemented by
++   * all embedders.
+    */
+   virtual bool IsRunning() = 0;
++  virtual bool IsValid() { return IsRunning(); }
++
++  /**
++   * Returns true if job priority can be changed.
++   */
++  virtual bool UpdatePriorityEnabled() const { return false; }
++
++  /**
++   *  Update this Job's priority.
++   */
++  virtual void UpdatePriority(TaskPriority new_priority) {}
+ };
+ 
+ /**
+  * A JobTask represents work to run in parallel from Platform::PostJob().
+  */
+ class JobTask {
+  public:
+   virtual ~JobTask() = default;
+ 
+   virtual void Run(JobDelegate* delegate) = 0;
+@@ -376,21 +401,27 @@ class PageAllocator {
+ 
+   /**
+    * Memory permissions.
+    */
+   enum Permission {
+     kNoAccess,
+     kRead,
+     kReadWrite,
+     // TODO(hpayer): Remove this flag. Memory should never be rwx.
+     kReadWriteExecute,
+-    kReadExecute
++    kReadExecute,
++    // Set this when reserving memory that will later require kReadWriteExecute
++    // permissions. The resulting behavior is platform-specific, currently
++    // this is used to set the MAP_JIT flag on Apple Silicon.
++    // TODO(jkummerow): Remove this when Wasm has a platform-independent
++    // w^x implementation.
++    kNoAccessWillJitLater
+   };
+ 
+   /**
+    * Allocates memory in range with the given alignment and permission.
+    */
+   virtual void* AllocatePages(void* address, size_t length, size_t alignment,
+                               Permission permissions) = 0;
+ 
+   /**
+    * Frees memory in a range that was allocated by a call to AllocatePages.

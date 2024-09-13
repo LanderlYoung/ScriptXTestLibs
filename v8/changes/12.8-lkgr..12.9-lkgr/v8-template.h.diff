@@ -1,0 +1,59 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index ba5ff7bff5a..7b47c3b6282 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -2,20 +2,21 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+ #ifndef INCLUDE_V8_TEMPLATE_H_
+ #define INCLUDE_V8_TEMPLATE_H_
+ 
+ #include <cstddef>
+ #include <string_view>
+ 
+ #include "v8-data.h"               // NOLINT(build/include_directory)
++#include "v8-exception.h"          // NOLINT(build/include_directory)
+ #include "v8-function-callback.h"  // NOLINT(build/include_directory)
+ #include "v8-local-handle.h"       // NOLINT(build/include_directory)
+ #include "v8-memory-span.h"        // NOLINT(build/include_directory)
+ #include "v8-object.h"             // NOLINT(build/include_directory)
+ #include "v8config.h"              // NOLINT(build/include_directory)
+ 
+ namespace v8 {
+ 
+ class CFunction;
+ class FunctionTemplate;
+@@ -650,20 +651,32 @@ class V8_EXPORT FunctionTemplate : public Template {
+    **/
+   void SetPrototypeProviderTemplate(Local<FunctionTemplate> prototype_provider);
+ 
+   /**
+    * Set the class name of the FunctionTemplate.  This is used for
+    * printing objects created with the function created from the
+    * FunctionTemplate as its constructor.
+    */
+   void SetClassName(Local<String> name);
+ 
++  /**
++   * Set the interface name of the FunctionTemplate. This is provided as
++   * contextual information in an ExceptionPropagationMessage to the embedder.
++   */
++  void SetInterfaceName(Local<String> name);
++
++  /**
++   * Provides information on the type of FunctionTemplate for embedder
++   * exception handling.
++   */
++  void SetExceptionContext(ExceptionContext context);
++
+   /**
+    * When set to true, no access check will be performed on the receiver of a
+    * function call.  Currently defaults to true, but this is subject to change.
+    */
+   void SetAcceptAnyReceiver(bool value);
+ 
+   /**
+    * Sets the ReadOnly flag in the attributes of the 'prototype' property
+    * of functions created from this FunctionTemplate to true.
+    */

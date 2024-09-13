@@ -1,0 +1,26 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 556407d8761..b707fafc492 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -102,21 +102,20 @@ class TaskRunner {
+   virtual bool NonNestableTasksEnabled() const { return false; }
+ 
+   /**
+    * Returns true if non-nestable delayed tasks are enabled for this TaskRunner.
+    */
+   virtual bool NonNestableDelayedTasksEnabled() const { return false; }
+ 
+   TaskRunner() = default;
+   virtual ~TaskRunner() = default;
+ 
+- private:
+   TaskRunner(const TaskRunner&) = delete;
+   TaskRunner& operator=(const TaskRunner&) = delete;
+ };
+ 
+ /**
+  * The interface represents complex arguments to trace events.
+  */
+ class ConvertableToTraceFormat {
+  public:
+   virtual ~ConvertableToTraceFormat() = default;

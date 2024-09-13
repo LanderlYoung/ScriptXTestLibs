@@ -1,0 +1,91 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 47cf2e26712..14d96d72d44 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -917,54 +917,49 @@ class HighAllocationThroughputObserver {
+  * The embedder has to provide an implementation of this interface before
+  * initializing the rest of V8.
+  */
+ class Platform {
+  public:
+   virtual ~Platform() = default;
+ 
+   /**
+    * Allows the embedder to manage memory page allocations.
+    */
+-  virtual PageAllocator* GetPageAllocator() {
+-    // TODO(bbudge) Make this abstract after all embedders implement this.
+-    return nullptr;
+-  }
++  virtual PageAllocator* GetPageAllocator() = 0;
+ 
+   /**
+    * Allows the embedder to specify a custom allocator used for zones.
+    */
+   virtual ZoneBackingAllocator* GetZoneBackingAllocator() {
+     static ZoneBackingAllocator default_allocator;
+     return &default_allocator;
+   }
+ 
+   /**
+    * Enables the embedder to respond in cases where V8 can't allocate large
+    * blocks of memory. V8 retries the failed allocation once after calling this
+    * method. On success, execution continues; otherwise V8 exits with a fatal
+    * error.
+    * Embedder overrides of this function must NOT call back into V8.
+    */
+-  virtual void OnCriticalMemoryPressure() {
+-    // TODO(bbudge) Remove this when embedders override the following method.
+-    // See crbug.com/634547.
+-  }
++  virtual void OnCriticalMemoryPressure() {}
+ 
+   /**
+    * Enables the embedder to respond in cases where V8 can't allocate large
+    * memory regions. The |length| parameter is the amount of memory needed.
+    * Returns true if memory is now available. Returns false if no memory could
+    * be made available. V8 will retry allocations until this method returns
+    * false.
+    *
+    * Embedder overrides of this function must NOT call back into V8.
+    */
++  V8_DEPRECATE_SOON("Use the method without informative parameter")
+   virtual bool OnCriticalMemoryPressure(size_t length) { return false; }
+ 
+   /**
+    * Gets the number of worker threads used by
+    * Call(BlockingTask)OnWorkerThread(). This can be used to estimate the number
+    * of tasks a work package should be split into. A return value of 0 means
+    * that there are no worker threads available. Note that a value of 0 won't
+    * prohibit V8 from posting tasks using |CallOnWorkerThread|.
+    */
+   virtual int NumberOfWorkerThreads() = 0;
+@@ -1069,27 +1064,23 @@ class Platform {
+    * this doesn't immediately schedules |worker_task| to run; the Job is then
+    * scheduled by calling either NotifyConcurrencyIncrease() or Join().
+    *
+    * A sufficient CreateJob() implementation that uses the default Job provided
+    * in libplatform looks like:
+    *  std::unique_ptr<JobHandle> CreateJob(
+    *      TaskPriority priority, std::unique_ptr<JobTask> job_task) override {
+    *    return v8::platform::NewDefaultJobHandle(
+    *        this, priority, std::move(job_task), NumberOfWorkerThreads());
+    * }
+-   *
+-   * TODO(etiennep): Make pure virtual once custom embedders implement it.
+    */
+   virtual std::unique_ptr<JobHandle> CreateJob(
+-      TaskPriority priority, std::unique_ptr<JobTask> job_task) {
+-    return nullptr;
+-  }
++      TaskPriority priority, std::unique_ptr<JobTask> job_task) = 0;
+ 
+   /**
+    * Monotonically increasing time in seconds from an arbitrary fixed point in
+    * the past. This function is expected to return at least
+    * millisecond-precision values. For this reason,
+    * it is recommended that the fixed point be no further in the past than
+    * the epoch.
+    **/
+   virtual double MonotonicallyIncreasingTime() = 0;
+ 

@@ -1,0 +1,26 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 7b2c81d1364..32a82f881e7 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -916,20 +916,21 @@ class HighAllocationThroughputObserver {
+  *
+  * The embedder has to provide an implementation of this interface before
+  * initializing the rest of V8.
+  */
+ class Platform {
+  public:
+   virtual ~Platform() = default;
+ 
+   /**
+    * Allows the embedder to manage memory page allocations.
++   * Returning nullptr will cause V8 to use the default page allocator.
+    */
+   virtual PageAllocator* GetPageAllocator() = 0;
+ 
+   /**
+    * Allows the embedder to specify a custom allocator used for zones.
+    */
+   virtual ZoneBackingAllocator* GetZoneBackingAllocator() {
+     static ZoneBackingAllocator default_allocator;
+     return &default_allocator;
+   }

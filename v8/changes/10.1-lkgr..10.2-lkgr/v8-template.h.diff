@@ -1,0 +1,104 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index 96fcab6074c..0afdccaafb6 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -82,33 +82,47 @@ class V8_EXPORT Template : public Data {
+    *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+    *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    * \param signature The signature describes valid receivers for the accessor
+    *   and is used to perform implicit instance checks against them. If the
+    *   receiver is incompatible (i.e. is not an instance of the constructor as
+    *   defined by FunctionTemplate::HasInstance()), an implicit TypeError is
+    *   thrown and no callback is invoked.
+    */
++  V8_DEPRECATED("Do signature check in accessor")
++  void SetNativeDataProperty(
++      Local<String> name, AccessorGetterCallback getter,
++      AccessorSetterCallback setter, Local<Value> data,
++      PropertyAttribute attribute, Local<AccessorSignature> signature,
++      AccessControl settings = DEFAULT,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
++  V8_DEPRECATED("Do signature check in accessor")
++  void SetNativeDataProperty(
++      Local<Name> name, AccessorNameGetterCallback getter,
++      AccessorNameSetterCallback setter, Local<Value> data,
++      PropertyAttribute attribute, Local<AccessorSignature> signature,
++      AccessControl settings = DEFAULT,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      Local<AccessorSignature> signature = Local<AccessorSignature>(),
+       AccessControl settings = DEFAULT,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      Local<AccessorSignature> signature = Local<AccessorSignature>(),
+       AccessControl settings = DEFAULT,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Like SetNativeDataProperty, but V8 will replace the native data property
+    * with a real data property on first access.
+    */
+   void SetLazyDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+@@ -806,34 +820,47 @@ class V8_EXPORT ObjectTemplate : public Template {
+    *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+    *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    * \param signature The signature describes valid receivers for the accessor
+    *   and is used to perform implicit instance checks against them. If the
+    *   receiver is incompatible (i.e. is not an instance of the constructor as
+    *   defined by FunctionTemplate::HasInstance()), an implicit TypeError is
+    *   thrown and no callback is invoked.
+    */
++  V8_DEPRECATED("Do signature check in accessor")
++  void SetAccessor(
++      Local<String> name, AccessorGetterCallback getter,
++      AccessorSetterCallback setter, Local<Value> data, AccessControl settings,
++      PropertyAttribute attribute, Local<AccessorSignature> signature,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
++  V8_DEPRECATED("Do signature check in accessor")
++  void SetAccessor(
++      Local<Name> name, AccessorNameGetterCallback getter,
++      AccessorNameSetterCallback setter, Local<Value> data,
++      AccessControl settings, PropertyAttribute attribute,
++      Local<AccessorSignature> signature,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetAccessor(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), AccessControl settings = DEFAULT,
+       PropertyAttribute attribute = None,
+-      Local<AccessorSignature> signature = Local<AccessorSignature>(),
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetAccessor(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), AccessControl settings = DEFAULT,
+       PropertyAttribute attribute = None,
+-      Local<AccessorSignature> signature = Local<AccessorSignature>(),
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Sets a named property handler on the object template.
+    *
+    * Whenever a property whose name is a string or a symbol is accessed on
+    * objects created from this object template, the provided callback is
+    * invoked instead of accessing the property directly on the JavaScript
+    * object.

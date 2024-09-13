@@ -1,0 +1,85 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 7cfd18b5708..03be1c8cdd6 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -73,38 +73,54 @@ class TaskRunner {
+    * Schedules a task to be invoked by this TaskRunner. The TaskRunner
+    * implementation takes ownership of |task|.
+    */
+   virtual void PostTask(std::unique_ptr<Task> task) = 0;
+ 
+   /**
+    * Schedules a task to be invoked by this TaskRunner. The TaskRunner
+    * implementation takes ownership of |task|. The |task| cannot be nested
+    * within other task executions.
+    *
++   * Tasks which shouldn't be interleaved with JS execution must be posted with
++   * |PostNonNestableTask| or |PostNonNestableDelayedTask|. This is because the
++   * embedder may process tasks in a callback which is called during JS
++   * execution.
++   *
++   * In particular, tasks which execute JS must be non-nestable, since JS
++   * execution is not allowed to nest.
++   *
+    * Requires that |TaskRunner::NonNestableTasksEnabled()| is true.
+    */
+   virtual void PostNonNestableTask(std::unique_ptr<Task> task) {}
+ 
+   /**
+    * Schedules a task to be invoked by this TaskRunner. The task is scheduled
+    * after the given number of seconds |delay_in_seconds|. The TaskRunner
+    * implementation takes ownership of |task|.
+    */
+   virtual void PostDelayedTask(std::unique_ptr<Task> task,
+                                double delay_in_seconds) = 0;
+ 
+   /**
+    * Schedules a task to be invoked by this TaskRunner. The task is scheduled
+    * after the given number of seconds |delay_in_seconds|. The TaskRunner
+    * implementation takes ownership of |task|. The |task| cannot be nested
+    * within other task executions.
+    *
++   * Tasks which shouldn't be interleaved with JS execution must be posted with
++   * |PostNonNestableTask| or |PostNonNestableDelayedTask|. This is because the
++   * embedder may process tasks in a callback which is called during JS
++   * execution.
++   *
++   * In particular, tasks which execute JS must be non-nestable, since JS
++   * execution is not allowed to nest.
++   *
+    * Requires that |TaskRunner::NonNestableDelayedTasksEnabled()| is true.
+    */
+   virtual void PostNonNestableDelayedTask(std::unique_ptr<Task> task,
+                                           double delay_in_seconds) {}
+ 
+   /**
+    * Schedules an idle task to be invoked by this TaskRunner. The task is
+    * scheduled when the embedder is idle. Requires that
+    * |TaskRunner::IdleTasksEnabled()| is true. Idle tasks may be reordered
+    * relative to other task types and may be starved for an arbitrarily long
+@@ -512,23 +528,22 @@ class Platform {
+    * internal lock (A), hence JobTask::GetMaxConcurrency can only use a lock (B)
+    * if that lock is *never* held while calling back into JobHandle from any
+    * thread (A=>B/B=>A deadlock) and [2] JobTask::Run or
+    * JobTask::GetMaxConcurrency may be invoked synchronously from JobHandle
+    * (B=>JobHandle::foo=>B deadlock).
+    *
+    * A sufficient PostJob() implementation that uses the default Job provided in
+    * libplatform looks like:
+    *  std::unique_ptr<JobHandle> PostJob(
+    *      TaskPriority priority, std::unique_ptr<JobTask> job_task) override {
+-   *    return std::make_unique<DefaultJobHandle>(
+-   *        std::make_shared<DefaultJobState>(
+-   *            this, std::move(job_task), kNumThreads));
++   *    return v8::platform::NewDefaultJobHandle(
++   *        this, priority, std::move(job_task), NumberOfWorkerThreads());
+    * }
+    */
+   virtual std::unique_ptr<JobHandle> PostJob(
+       TaskPriority priority, std::unique_ptr<JobTask> job_task) {
+     return nullptr;
+   }
+ 
+   /**
+    * Monotonically increasing time in seconds from an arbitrary fixed point in
+    * the past. This function is expected to return at least

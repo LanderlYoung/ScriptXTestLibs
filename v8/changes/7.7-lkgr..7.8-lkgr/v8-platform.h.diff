@@ -1,0 +1,33 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 7e43b0d9db4..b707fafc492 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -432,28 +432,20 @@ class Platform {
+    * Returns an instance of a v8::TracingController. This must be non-nullptr.
+    */
+   virtual TracingController* GetTracingController() = 0;
+ 
+   /**
+    * Tells the embedder to generate and upload a crashdump during an unexpected
+    * but non-critical scenario.
+    */
+   virtual void DumpWithoutCrashing() {}
+ 
+-  /**
+-   * Lets the embedder to add crash keys.
+-   */
+-  virtual void AddCrashKey(int id, const char* name, uintptr_t value) {
+-    // "noop" is a valid implementation if the embedder doesn't care to log
+-    // additional data for crashes.
+-  }
+-
+  protected:
+   /**
+    * Default implementation of current wall-clock time in milliseconds
+    * since epoch. Useful for implementing |CurrentClockTimeMillis| if
+    * nothing special needed.
+    */
+   V8_EXPORT static double SystemClockTimeMillis();
+ };
+ 
+ }  // namespace v8

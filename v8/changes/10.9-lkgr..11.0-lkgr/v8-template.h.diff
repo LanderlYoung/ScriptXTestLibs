@@ -1,0 +1,29 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index 669012a9814..11296cd4889 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -23,21 +23,23 @@ class Signature;
+ 
+ #define V8_INTRINSICS_LIST(F)                                 \
+   F(ArrayProto_entries, array_entries_iterator)               \
+   F(ArrayProto_forEach, array_for_each_iterator)              \
+   F(ArrayProto_keys, array_keys_iterator)                     \
+   F(ArrayProto_values, array_values_iterator)                 \
+   F(ArrayPrototype, initial_array_prototype)                  \
+   F(AsyncIteratorPrototype, initial_async_iterator_prototype) \
+   F(ErrorPrototype, initial_error_prototype)                  \
+   F(IteratorPrototype, initial_iterator_prototype)            \
+-  F(ObjProto_valueOf, object_value_of_function)
++  F(MapIteratorPrototype, initial_map_iterator_prototype)     \
++  F(ObjProto_valueOf, object_value_of_function)               \
++  F(SetIteratorPrototype, initial_set_iterator_prototype)
+ 
+ enum Intrinsic {
+ #define V8_DECL_INTRINSIC(name, iname) k##name,
+   V8_INTRINSICS_LIST(V8_DECL_INTRINSIC)
+ #undef V8_DECL_INTRINSIC
+ };
+ 
+ /**
+  * The superclass of object and function templates.
+  */

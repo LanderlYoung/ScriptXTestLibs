@@ -1,0 +1,27 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index 7b47c3b6282..93b94285726 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -65,22 +65,20 @@ class V8_EXPORT Template : public Data {
+    * Sets an "accessor property" on the object template, see
+    * https://tc39.es/ecma262/#sec-object-type.
+    *
+    * Whenever the property with the given name is accessed on objects
+    * created from this ObjectTemplate the getter and setter functions
+    * are called.
+    *
+    * \param name The name of the property for which an accessor is added.
+    * \param getter The callback to invoke when getting the property.
+    * \param setter The callback to invoke when setting the property.
+-   * \param data A piece of data that will be passed to the getter and setter
+-   *   callbacks whenever they are invoked.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    */
+   void SetAccessorProperty(
+       Local<Name> name,
+       Local<FunctionTemplate> getter = Local<FunctionTemplate>(),
+       Local<FunctionTemplate> setter = Local<FunctionTemplate>(),
+       PropertyAttribute attribute = None);
+ 
+   /**

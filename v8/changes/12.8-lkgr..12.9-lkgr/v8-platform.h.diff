@@ -1,0 +1,66 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 56bfd727482..5110f432077 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -1020,32 +1020,20 @@ class VirtualAddressSpace {
+                                                    size_t size) = 0;
+ 
+  private:
+   const size_t page_size_;
+   const size_t allocation_granularity_;
+   const Address base_;
+   const size_t size_;
+   const PagePermissions max_page_permissions_;
+ };
+ 
+-/**
+- * V8 Allocator used for allocating zone backings.
+- */
+-class ZoneBackingAllocator {
+- public:
+-  using MallocFn = void* (*)(size_t);
+-  using FreeFn = void (*)(void*);
+-
+-  virtual MallocFn GetMallocFn() const { return ::malloc; }
+-  virtual FreeFn GetFreeFn() const { return ::free; }
+-};
+-
+ /**
+  * Observer used by V8 to notify the embedder about entering/leaving sections
+  * with high throughput of malloc/free operations.
+  */
+ class HighAllocationThroughputObserver {
+  public:
+   virtual void EnterSection() {}
+   virtual void LeaveSection() {}
+ };
+ 
+@@ -1068,28 +1056,20 @@ class Platform {
+   /**
+    * Allows the embedder to provide an allocator that uses per-thread memory
+    * permissions to protect allocations.
+    * Returning nullptr will cause V8 to disable protections that rely on this
+    * feature.
+    */
+   virtual ThreadIsolatedAllocator* GetThreadIsolatedAllocator() {
+     return nullptr;
+   }
+ 
+-  /**
+-   * Allows the embedder to specify a custom allocator used for zones.
+-   */
+-  virtual ZoneBackingAllocator* GetZoneBackingAllocator() {
+-    static ZoneBackingAllocator default_allocator;
+-    return &default_allocator;
+-  }
+-
+   /**
+    * Enables the embedder to respond in cases where V8 can't allocate large
+    * blocks of memory. V8 retries the failed allocation once after calling this
+    * method. On success, execution continues; otherwise V8 exits with a fatal
+    * error.
+    * Embedder overrides of this function must NOT call back into V8.
+    */
+   virtual void OnCriticalMemoryPressure() {}
+ 
+   /**

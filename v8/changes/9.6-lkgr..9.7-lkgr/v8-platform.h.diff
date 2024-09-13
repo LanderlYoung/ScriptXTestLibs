@@ -1,0 +1,32 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index e60e1757b63..234582f0f6a 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -437,27 +437,21 @@ class PageAllocator {
+   virtual bool DiscardSystemPages(void* address, size_t size) { return true; }
+ 
+   /**
+    * Decommits any wired memory pages in the given range, allowing the OS to
+    * reclaim them, and marks the region as inacessible (kNoAccess). The address
+    * range stays reserved and can be accessed again later by changing its
+    * permissions. However, in that case the memory content is guaranteed to be
+    * zero-initialized again. The memory must have been previously allocated by a
+    * call to AllocatePages. Returns true on success, false otherwise.
+    */
+-#ifdef V8_VIRTUAL_MEMORY_CAGE
+-  // Implementing this API is required when the virtual memory cage is enabled.
+   virtual bool DecommitPages(void* address, size_t size) = 0;
+-#else
+-  // Otherwise, it is optional for now.
+-  virtual bool DecommitPages(void* address, size_t size) { return false; }
+-#endif
+ 
+   /**
+    * INTERNAL ONLY: This interface has not been stabilised and may change
+    * without notice from one release to another without being deprecated first.
+    */
+   class SharedMemoryMapping {
+    public:
+     // Implementations are expected to free the shared memory mapping in the
+     // destructor.
+     virtual ~SharedMemoryMapping() = default;

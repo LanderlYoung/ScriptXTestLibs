@@ -1,0 +1,298 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index 0afdccaafb6..669012a9814 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -7,21 +7,20 @@
+ 
+ #include "v8-data.h"               // NOLINT(build/include_directory)
+ #include "v8-function-callback.h"  // NOLINT(build/include_directory)
+ #include "v8-local-handle.h"       // NOLINT(build/include_directory)
+ #include "v8-memory-span.h"        // NOLINT(build/include_directory)
+ #include "v8-object.h"             // NOLINT(build/include_directory)
+ #include "v8config.h"              // NOLINT(build/include_directory)
+ 
+ namespace v8 {
+ 
+-class AccessorSignature;
+ class CFunction;
+ class FunctionTemplate;
+ class ObjectTemplate;
+ class Signature;
+ 
+ // --- Templates ---
+ 
+ #define V8_INTRINSICS_LIST(F)                                 \
+   F(ArrayProto_entries, array_entries_iterator)               \
+   F(ArrayProto_forEach, array_for_each_iterator)              \
+@@ -76,42 +75,21 @@ class V8_EXPORT Template : public Data {
+    * \param settings Access control settings for the accessor. This is a bit
+    *   field consisting of one of more of
+    *   DEFAULT = 0, ALL_CAN_READ = 1, or ALL_CAN_WRITE = 2.
+    *   The default is to not allow cross-context access.
+    *   ALL_CAN_READ means that all cross-context reads are allowed.
+    *   ALL_CAN_WRITE means that all cross-context writes are allowed.
+    *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+    *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+-   * \param signature The signature describes valid receivers for the accessor
+-   *   and is used to perform implicit instance checks against them. If the
+-   *   receiver is incompatible (i.e. is not an instance of the constructor as
+-   *   defined by FunctionTemplate::HasInstance()), an implicit TypeError is
+-   *   thrown and no callback is invoked.
+    */
+-  V8_DEPRECATED("Do signature check in accessor")
+-  void SetNativeDataProperty(
+-      Local<String> name, AccessorGetterCallback getter,
+-      AccessorSetterCallback setter, Local<Value> data,
+-      PropertyAttribute attribute, Local<AccessorSignature> signature,
+-      AccessControl settings = DEFAULT,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+-  V8_DEPRECATED("Do signature check in accessor")
+-  void SetNativeDataProperty(
+-      Local<Name> name, AccessorNameGetterCallback getter,
+-      AccessorNameSetterCallback setter, Local<Value> data,
+-      PropertyAttribute attribute, Local<AccessorSignature> signature,
+-      AccessControl settings = DEFAULT,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+       AccessControl settings = DEFAULT,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+@@ -144,21 +122,22 @@ class V8_EXPORT Template : public Data {
+   friend class FunctionTemplate;
+ };
+ 
+ // TODO(dcarney): Replace GenericNamedPropertyFooCallback with just
+ // NamedPropertyFooCallback.
+ 
+ /**
+  * Interceptor for get requests on an object.
+  *
+  * Use `info.GetReturnValue().Set()` to set the return value of the
+- * intercepted get request.
++ * intercepted get request. If the property does not exist the callback should
++ * not set the result and must not produce side effects.
+  *
+  * \param property The name of the property for which the request was
+  * intercepted.
+  * \param info Information about the intercepted request, such as
+  * isolate, receiver, return value, or whether running in `'use strict`' mode.
+  * See `PropertyCallbackInfo`.
+  *
+  * \code
+  *  void GetterCallback(
+  *    Local<Name> name,
+@@ -185,23 +164,23 @@ class V8_EXPORT Template : public Data {
+  */
+ using GenericNamedPropertyGetterCallback =
+     void (*)(Local<Name> property, const PropertyCallbackInfo<Value>& info);
+ 
+ /**
+  * Interceptor for set requests on an object.
+  *
+  * Use `info.GetReturnValue()` to indicate whether the request was intercepted
+  * or not. If the setter successfully intercepts the request, i.e., if the
+  * request should not be further executed, call
+- * `info.GetReturnValue().Set(value)`. If the setter
+- * did not intercept the request, i.e., if the request should be handled as
+- * if no interceptor is present, do not not call `Set()`.
++ * `info.GetReturnValue().Set(value)`. If the setter did not intercept the
++ * request, i.e., if the request should be handled as if no interceptor is
++ * present, do not not call `Set()` and do not produce side effects.
+  *
+  * \param property The name of the property for which the request was
+  * intercepted.
+  * \param value The value which the property will have if the request
+  * is not intercepted.
+  * \param info Information about the intercepted request, such as
+  * isolate, receiver, return value, or whether running in `'use strict'` mode.
+  * See `PropertyCallbackInfo`.
+  *
+  * See also
+@@ -210,21 +189,23 @@ using GenericNamedPropertyGetterCallback =
+ using GenericNamedPropertySetterCallback =
+     void (*)(Local<Name> property, Local<Value> value,
+              const PropertyCallbackInfo<Value>& info);
+ 
+ /**
+  * Intercepts all requests that query the attributes of the
+  * property, e.g., getOwnPropertyDescriptor(), propertyIsEnumerable(), and
+  * defineProperty().
+  *
+  * Use `info.GetReturnValue().Set(value)` to set the property attributes. The
+- * value is an integer encoding a `v8::PropertyAttribute`.
++ * value is an integer encoding a `v8::PropertyAttribute`. If the property does
++ * not exist the callback should not set the result and must not produce side
++ * effects.
+  *
+  * \param property The name of the property for which the request was
+  * intercepted.
+  * \param info Information about the intercepted request, such as
+  * isolate, receiver, return value, or whether running in `'use strict'` mode.
+  * See `PropertyCallbackInfo`.
+  *
+  * \note Some functions query the property attributes internally, even though
+  * they do not return the attributes. For example, `hasOwnProperty()` can
+  * trigger this interceptor depending on the state of the object.
+@@ -235,21 +216,22 @@ using GenericNamedPropertySetterCallback =
+ using GenericNamedPropertyQueryCallback =
+     void (*)(Local<Name> property, const PropertyCallbackInfo<Integer>& info);
+ 
+ /**
+  * Interceptor for delete requests on an object.
+  *
+  * Use `info.GetReturnValue()` to indicate whether the request was intercepted
+  * or not. If the deleter successfully intercepts the request, i.e., if the
+  * request should not be further executed, call
+  * `info.GetReturnValue().Set(value)` with a boolean `value`. The `value` is
+- * used as the return value of `delete`.
++ * used as the return value of `delete`. If the deleter does not intercept the
++ * request then it should not set the result and must not produce side effects.
+  *
+  * \param property The name of the property for which the request was
+  * intercepted.
+  * \param info Information about the intercepted request, such as
+  * isolate, receiver, return value, or whether running in `'use strict'` mode.
+  * See `PropertyCallbackInfo`.
+  *
+  * \note If you need to mimic the behavior of `delete`, i.e., throw in strict
+  * mode instead of returning false, use `info.ShouldThrowOnError()` to determine
+  * if you are in strict mode.
+@@ -267,23 +249,23 @@ using GenericNamedPropertyDeleterCallback =
+  */
+ using GenericNamedPropertyEnumeratorCallback =
+     void (*)(const PropertyCallbackInfo<Array>& info);
+ 
+ /**
+  * Interceptor for defineProperty requests on an object.
+  *
+  * Use `info.GetReturnValue()` to indicate whether the request was intercepted
+  * or not. If the definer successfully intercepts the request, i.e., if the
+  * request should not be further executed, call
+- * `info.GetReturnValue().Set(value)`. If the definer
+- * did not intercept the request, i.e., if the request should be handled as
+- * if no interceptor is present, do not not call `Set()`.
++ * `info.GetReturnValue().Set(value)`. If the definer did not intercept the
++ * request, i.e., if the request should be handled as if no interceptor is
++ * present, do not not call `Set()` and do not produce side effects.
+  *
+  * \param property The name of the property for which the request was
+  * intercepted.
+  * \param desc The property descriptor which is used to define the
+  * property if the request is not intercepted.
+  * \param info Information about the intercepted request, such as
+  * isolate, receiver, return value, or whether running in `'use strict'` mode.
+  * See `PropertyCallbackInfo`.
+  *
+  * See also `ObjectTemplate::SetHandler`.
+@@ -814,41 +796,21 @@ class V8_EXPORT ObjectTemplate : public Template {
+    * \param settings Access control settings for the accessor. This is a bit
+    *   field consisting of one of more of
+    *   DEFAULT = 0, ALL_CAN_READ = 1, or ALL_CAN_WRITE = 2.
+    *   The default is to not allow cross-context access.
+    *   ALL_CAN_READ means that all cross-context reads are allowed.
+    *   ALL_CAN_WRITE means that all cross-context writes are allowed.
+    *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+    *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+-   * \param signature The signature describes valid receivers for the accessor
+-   *   and is used to perform implicit instance checks against them. If the
+-   *   receiver is incompatible (i.e. is not an instance of the constructor as
+-   *   defined by FunctionTemplate::HasInstance()), an implicit TypeError is
+-   *   thrown and no callback is invoked.
+    */
+-  V8_DEPRECATED("Do signature check in accessor")
+-  void SetAccessor(
+-      Local<String> name, AccessorGetterCallback getter,
+-      AccessorSetterCallback setter, Local<Value> data, AccessControl settings,
+-      PropertyAttribute attribute, Local<AccessorSignature> signature,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+-  V8_DEPRECATED("Do signature check in accessor")
+-  void SetAccessor(
+-      Local<Name> name, AccessorNameGetterCallback getter,
+-      AccessorNameSetterCallback setter, Local<Value> data,
+-      AccessControl settings, PropertyAttribute attribute,
+-      Local<AccessorSignature> signature,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetAccessor(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), AccessControl settings = DEFAULT,
+       PropertyAttribute attribute = None,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetAccessor(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+@@ -1012,38 +974,20 @@ class V8_EXPORT Signature : public Data {
+       Local<FunctionTemplate> receiver = Local<FunctionTemplate>());
+ 
+   V8_INLINE static Signature* Cast(Data* data);
+ 
+  private:
+   Signature();
+ 
+   static void CheckCast(Data* that);
+ };
+ 
+-/**
+- * An AccessorSignature specifies which receivers are valid parameters
+- * to an accessor callback.
+- */
+-class V8_EXPORT AccessorSignature : public Data {
+- public:
+-  static Local<AccessorSignature> New(
+-      Isolate* isolate,
+-      Local<FunctionTemplate> receiver = Local<FunctionTemplate>());
+-
+-  V8_INLINE static AccessorSignature* Cast(Data* data);
+-
+- private:
+-  AccessorSignature();
+-
+-  static void CheckCast(Data* that);
+-};
+-
+ // --- Implementation ---
+ 
+ void Template::Set(Isolate* isolate, const char* name, Local<Data> value,
+                    PropertyAttribute attributes) {
+   Set(String::NewFromUtf8(isolate, name, NewStringType::kInternalized)
+           .ToLocalChecked(),
+       value, attributes);
+ }
+ 
+ FunctionTemplate* FunctionTemplate::Cast(Data* data) {
+@@ -1060,20 +1004,13 @@ ObjectTemplate* ObjectTemplate::Cast(Data* data) {
+   return reinterpret_cast<ObjectTemplate*>(data);
+ }
+ 
+ Signature* Signature::Cast(Data* data) {
+ #ifdef V8_ENABLE_CHECKS
+   CheckCast(data);
+ #endif
+   return reinterpret_cast<Signature*>(data);
+ }
+ 
+-AccessorSignature* AccessorSignature::Cast(Data* data) {
+-#ifdef V8_ENABLE_CHECKS
+-  CheckCast(data);
+-#endif
+-  return reinterpret_cast<AccessorSignature*>(data);
+-}
+-
+ }  // namespace v8
+ 
+ #endif  // INCLUDE_V8_TEMPLATE_H_

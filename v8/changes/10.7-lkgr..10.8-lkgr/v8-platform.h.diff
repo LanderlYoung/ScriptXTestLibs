@@ -1,0 +1,37 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 5d34372df50..7b2c81d1364 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -936,32 +936,20 @@ class Platform {
+ 
+   /**
+    * Enables the embedder to respond in cases where V8 can't allocate large
+    * blocks of memory. V8 retries the failed allocation once after calling this
+    * method. On success, execution continues; otherwise V8 exits with a fatal
+    * error.
+    * Embedder overrides of this function must NOT call back into V8.
+    */
+   virtual void OnCriticalMemoryPressure() {}
+ 
+-  /**
+-   * Enables the embedder to respond in cases where V8 can't allocate large
+-   * memory regions. The |length| parameter is the amount of memory needed.
+-   * Returns true if memory is now available. Returns false if no memory could
+-   * be made available. V8 will retry allocations until this method returns
+-   * false.
+-   *
+-   * Embedder overrides of this function must NOT call back into V8.
+-   */
+-  V8_DEPRECATED("Use the method without informative parameter")
+-  virtual bool OnCriticalMemoryPressure(size_t length) { return false; }
+-
+   /**
+    * Gets the number of worker threads used by
+    * Call(BlockingTask)OnWorkerThread(). This can be used to estimate the number
+    * of tasks a work package should be split into. A return value of 0 means
+    * that there are no worker threads available. Note that a value of 0 won't
+    * prohibit V8 from posting tasks using |CallOnWorkerThread|.
+    */
+   virtual int NumberOfWorkerThreads() = 0;
+ 
+   /**

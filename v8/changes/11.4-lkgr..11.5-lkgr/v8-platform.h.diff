@@ -1,0 +1,84 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index e34a8db6d8b..9811c6e7bfb 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -564,20 +564,48 @@ class PageAllocator {
+    * INTERNAL ONLY: This interface has not been stabilised and may change
+    * without notice from one release to another without being deprecated first.
+    *
+    * If not overridden and changed to return true, V8 will not attempt to call
+    * AllocateSharedPages or RemapSharedPages. If overridden, AllocateSharedPages
+    * and RemapSharedPages must also be overridden.
+    */
+   virtual bool CanAllocateSharedPages() { return false; }
+ };
+ 
++/**
++ * An allocator that uses per-thread permissions to protect the memory.
++ *
++ * The implementation is platform/hardware specific, e.g. using pkeys on x64.
++ *
++ * INTERNAL ONLY: This interface has not been stabilised and may change
++ * without notice from one release to another without being deprecated first.
++ */
++class ThreadIsolatedAllocator {
++ public:
++  virtual ~ThreadIsolatedAllocator() = default;
++
++  virtual void* Allocate(size_t size) = 0;
++
++  virtual void Free(void* object) = 0;
++
++  enum class Type {
++    kPkey,
++  };
++
++  virtual Type Type() const = 0;
++
++  /**
++   * Return the pkey used to implement the thread isolation if Type == kPkey.
++   */
++  virtual int Pkey() const { return -1; }
++};
++
+ // Opaque type representing a handle to a shared memory region.
+ using PlatformSharedMemoryHandle = intptr_t;
+ static constexpr PlatformSharedMemoryHandle kInvalidSharedMemoryHandle = -1;
+ 
+ // Conversion routines from the platform-dependent shared memory identifiers
+ // into the opaque PlatformSharedMemoryHandle type. These use the underlying
+ // types (e.g. unsigned int) instead of the typedef'd ones (e.g. mach_port_t)
+ // to avoid pulling in large OS header files into this header file. Instead,
+ // the users of these routines are expected to include the respecitve OS
+ // headers in addition to this one.
+@@ -967,20 +995,30 @@ class HighAllocationThroughputObserver {
+ class Platform {
+  public:
+   virtual ~Platform() = default;
+ 
+   /**
+    * Allows the embedder to manage memory page allocations.
+    * Returning nullptr will cause V8 to use the default page allocator.
+    */
+   virtual PageAllocator* GetPageAllocator() = 0;
+ 
++  /**
++   * Allows the embedder to provide an allocator that uses per-thread memory
++   * permissions to protect allocations.
++   * Returning nullptr will cause V8 to disable protections that rely on this
++   * feature.
++   */
++  virtual ThreadIsolatedAllocator* GetThreadIsolatedAllocator() {
++    return nullptr;
++  }
++
+   /**
+    * Allows the embedder to specify a custom allocator used for zones.
+    */
+   virtual ZoneBackingAllocator* GetZoneBackingAllocator() {
+     static ZoneBackingAllocator default_allocator;
+     return &default_allocator;
+   }
+ 
+   /**
+    * Enables the embedder to respond in cases where V8 can't allocate large

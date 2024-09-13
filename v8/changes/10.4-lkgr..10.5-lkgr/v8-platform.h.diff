@@ -1,0 +1,57 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index c340262c90b..47cf2e26712 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -1049,31 +1049,47 @@ class Platform {
+    *
+    * PostJob() and methods of the returned JobHandle/JobDelegate, must never be
+    * called while holding a lock that could be acquired by JobTask::Run or
+    * JobTask::GetMaxConcurrency -- that could result in a deadlock. This is
+    * because [1] JobTask::GetMaxConcurrency may be invoked while holding
+    * internal lock (A), hence JobTask::GetMaxConcurrency can only use a lock (B)
+    * if that lock is *never* held while calling back into JobHandle from any
+    * thread (A=>B/B=>A deadlock) and [2] JobTask::Run or
+    * JobTask::GetMaxConcurrency may be invoked synchronously from JobHandle
+    * (B=>JobHandle::foo=>B deadlock).
++   */
++  virtual std::unique_ptr<JobHandle> PostJob(
++      TaskPriority priority, std::unique_ptr<JobTask> job_task) {
++    auto handle = CreateJob(priority, std::move(job_task));
++    handle->NotifyConcurrencyIncrease();
++    return handle;
++  }
++
++  /**
++   * Creates and returns a JobHandle associated with a Job. Unlike PostJob(),
++   * this doesn't immediately schedules |worker_task| to run; the Job is then
++   * scheduled by calling either NotifyConcurrencyIncrease() or Join().
+    *
+-   * A sufficient PostJob() implementation that uses the default Job provided in
+-   * libplatform looks like:
+-   *  std::unique_ptr<JobHandle> PostJob(
++   * A sufficient CreateJob() implementation that uses the default Job provided
++   * in libplatform looks like:
++   *  std::unique_ptr<JobHandle> CreateJob(
+    *      TaskPriority priority, std::unique_ptr<JobTask> job_task) override {
+    *    return v8::platform::NewDefaultJobHandle(
+    *        this, priority, std::move(job_task), NumberOfWorkerThreads());
+    * }
++   *
++   * TODO(etiennep): Make pure virtual once custom embedders implement it.
+    */
+-  virtual std::unique_ptr<JobHandle> PostJob(
+-      TaskPriority priority, std::unique_ptr<JobTask> job_task) = 0;
++  virtual std::unique_ptr<JobHandle> CreateJob(
++      TaskPriority priority, std::unique_ptr<JobTask> job_task) {
++    return nullptr;
++  }
+ 
+   /**
+    * Monotonically increasing time in seconds from an arbitrary fixed point in
+    * the past. This function is expected to return at least
+    * millisecond-precision values. For this reason,
+    * it is recommended that the fixed point be no further in the past than
+    * the epoch.
+    **/
+   virtual double MonotonicallyIncreasingTime() = 0;
+ 

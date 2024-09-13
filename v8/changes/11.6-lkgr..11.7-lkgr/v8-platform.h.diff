@@ -1,0 +1,159 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 9811c6e7bfb..0d82f4b990a 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -33,20 +33,21 @@ enum class TaskPriority : uint8_t {
+    * improve performance and memory usage of the application upon completion.
+    * Example: background compilation and garbage collection.
+    */
+   kUserVisible,
+   /**
+    * User blocking tasks are highest priority tasks that block the execution
+    * thread (e.g. major garbage collection). They must be finished as soon as
+    * possible.
+    */
+   kUserBlocking,
++  kMaxPriority = kUserBlocking
+ };
+ 
+ /**
+  * A Task represents a unit of work.
+  */
+ class Task {
+  public:
+   virtual ~Task() = default;
+ 
+   virtual void Run() = 0;
+@@ -590,20 +591,28 @@ class ThreadIsolatedAllocator {
+   enum class Type {
+     kPkey,
+   };
+ 
+   virtual Type Type() const = 0;
+ 
+   /**
+    * Return the pkey used to implement the thread isolation if Type == kPkey.
+    */
+   virtual int Pkey() const { return -1; }
++
++  /**
++   * Per-thread permissions can be reset on signal handler entry. Even reading
++   * ThreadIsolated memory will segfault in that case.
++   * Call this function on signal handler entry to ensure that read permissions
++   * are restored.
++   */
++  static void SetDefaultPermissionsForSignalHandler();
+ };
+ 
+ // Opaque type representing a handle to a shared memory region.
+ using PlatformSharedMemoryHandle = intptr_t;
+ static constexpr PlatformSharedMemoryHandle kInvalidSharedMemoryHandle = -1;
+ 
+ // Conversion routines from the platform-dependent shared memory identifiers
+ // into the opaque PlatformSharedMemoryHandle type. These use the underlying
+ // types (e.g. unsigned int) instead of the typedef'd ones (e.g. mach_port_t)
+ // to avoid pulling in large OS header files into this header file. Instead,
+@@ -1036,23 +1045,38 @@ class Platform {
+    * estimate the number of tasks a work package should be split into. A return
+    * value of 0 means that there are no worker threads available. Note that a
+    * value of 0 won't prohibit V8 from posting tasks using |CallOnWorkerThread|.
+    */
+   virtual int NumberOfWorkerThreads() = 0;
+ 
+   /**
+    * Returns a TaskRunner which can be used to post a task on the foreground.
+    * The TaskRunner's NonNestableTasksEnabled() must be true. This function
+    * should only be called from a foreground thread.
++   * TODO(chromium:1448758): Deprecate once |GetForegroundTaskRunner(Isolate*,
++   * TaskPriority)| is ready.
++   */
++  virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(
++      Isolate* isolate) {
++    return GetForegroundTaskRunner(isolate, TaskPriority::kUserBlocking);
++  }
++
++  /**
++   * Returns a TaskRunner with a specific |priority| which can be used to post a
++   * task on the foreground thread. The TaskRunner's NonNestableTasksEnabled()
++   * must be true. This function should only be called from a foreground thread.
++   * TODO(chromium:1448758): Make pure virtual once embedders implement it.
+    */
+   virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(
+-      Isolate* isolate) = 0;
++      Isolate* isolate, TaskPriority priority) {
++    return nullptr;
++  }
+ 
+   /**
+    * Schedules a task to be invoked on a worker thread.
+    * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+    * CallOnWorkerThread().
+    * TODO(chromium:1424158): Make non-virtual once embedders are migrated to
+    * PostTaskOnWorkerThreadImpl().
+    */
+   virtual void CallOnWorkerThread(std::unique_ptr<Task> task) {
+     PostTaskOnWorkerThreadImpl(TaskPriority::kUserVisible, std::move(task),
+@@ -1063,34 +1087,36 @@ class Platform {
+    * Schedules a task that blocks the main thread to be invoked with
+    * high-priority on a worker thread.
+    * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+    * CallBlockingTaskOnWorkerThread().
+    * TODO(chromium:1424158): Make non-virtual once embedders are migrated to
+    * PostTaskOnWorkerThreadImpl().
+    */
+   virtual void CallBlockingTaskOnWorkerThread(std::unique_ptr<Task> task) {
+     // Embedders may optionally override this to process these tasks in a high
+     // priority pool.
+-    CallOnWorkerThread(std::move(task));
++    PostTaskOnWorkerThreadImpl(TaskPriority::kUserBlocking, std::move(task),
++                               SourceLocation::Current());
+   }
+ 
+   /**
+    * Schedules a task to be invoked with low-priority on a worker thread.
+    * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+    * CallLowPriorityTaskOnWorkerThread().
+    * TODO(chromium:1424158): Make non-virtual once embedders are migrated to
+    * PostTaskOnWorkerThreadImpl().
+    */
+   virtual void CallLowPriorityTaskOnWorkerThread(std::unique_ptr<Task> task) {
+     // Embedders may optionally override this to process these tasks in a low
+     // priority pool.
+-    CallOnWorkerThread(std::move(task));
++    PostTaskOnWorkerThreadImpl(TaskPriority::kBestEffort, std::move(task),
++                               SourceLocation::Current());
+   }
+ 
+   /**
+    * Schedules a task to be invoked on a worker thread after |delay_in_seconds|
+    * expires.
+    * Embedders should override PostDelayedTaskOnWorkerThreadImpl() instead of
+    * CallDelayedOnWorkerThread().
+    * TODO(chromium:1424158): Make non-virtual once embedders are migrated to
+    * PostDelayedTaskOnWorkerThreadImpl().
+    */
+@@ -1269,21 +1295,23 @@ class Platform {
+       const SourceLocation& location) {
+     return nullptr;
+   }
+ 
+   /**
+    * Schedules a task with |priority| to be invoked on a worker thread.
+    * TODO(chromium:1424158): Make pure virtual once embedders implement it.
+    */
+   virtual void PostTaskOnWorkerThreadImpl(TaskPriority priority,
+                                           std::unique_ptr<Task> task,
+-                                          const SourceLocation& location) {}
++                                          const SourceLocation& location) {
++    CallOnWorkerThread(std::move(task));
++  }
+ 
+   /**
+    * Schedules a task with |priority| to be invoked on a worker thread after
+    * |delay_in_seconds| expires.
+    * TODO(chromium:1424158): Make pure virtual once embedders implement it.
+    */
+   virtual void PostDelayedTaskOnWorkerThreadImpl(
+       TaskPriority priority, std::unique_ptr<Task> task,
+       double delay_in_seconds, const SourceLocation& location) {}
+ };

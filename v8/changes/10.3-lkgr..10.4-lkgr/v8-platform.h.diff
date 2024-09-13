@@ -1,0 +1,30 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index efe5402969b..c340262c90b 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -151,23 +151,24 @@ class TaskRunner {
+   TaskRunner& operator=(const TaskRunner&) = delete;
+ };
+ 
+ /**
+  * Delegate that's passed to Job's worker task, providing an entry point to
+  * communicate with the scheduler.
+  */
+ class JobDelegate {
+  public:
+   /**
+-   * Returns true if this thread should return from the worker task on the
++   * Returns true if this thread *must* return from the worker task on the
+    * current thread ASAP. Workers should periodically invoke ShouldYield (or
+    * YieldIfNeeded()) as often as is reasonable.
++   * After this method returned true, ShouldYield must not be called again.
+    */
+   virtual bool ShouldYield() = 0;
+ 
+   /**
+    * Notifies the scheduler that max concurrency was increased, and the number
+    * of worker should be adjusted accordingly. See Platform::PostJob() for more
+    * details.
+    */
+   virtual void NotifyConcurrencyIncrease() = 0;
+ 

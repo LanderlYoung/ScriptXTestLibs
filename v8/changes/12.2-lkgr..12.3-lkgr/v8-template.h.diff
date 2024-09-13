@@ -1,0 +1,136 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index c18baf95c2e..674d4201d5d 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -1,17 +1,20 @@
+ // Copyright 2021 the V8 project authors. All rights reserved.
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+ #ifndef INCLUDE_V8_TEMPLATE_H_
+ #define INCLUDE_V8_TEMPLATE_H_
+ 
++#include <cstddef>
++#include <string_view>
++
+ #include "v8-data.h"               // NOLINT(build/include_directory)
+ #include "v8-function-callback.h"  // NOLINT(build/include_directory)
+ #include "v8-local-handle.h"       // NOLINT(build/include_directory)
+ #include "v8-memory-span.h"        // NOLINT(build/include_directory)
+ #include "v8-object.h"             // NOLINT(build/include_directory)
+ #include "v8config.h"              // NOLINT(build/include_directory)
+ 
+ namespace v8 {
+ 
+ class CFunction;
+@@ -771,21 +774,25 @@ struct IndexedPropertyHandlerConfiguration {
+  * Properties added to an ObjectTemplate are added to each object
+  * created from the ObjectTemplate.
+  */
+ class V8_EXPORT ObjectTemplate : public Template {
+  public:
+   /** Creates an ObjectTemplate. */
+   static Local<ObjectTemplate> New(
+       Isolate* isolate,
+       Local<FunctionTemplate> constructor = Local<FunctionTemplate>());
+ 
+-  /** Creates a new instance of this template.*/
++  /**
++   * Creates a new instance of this template.
++   *
++   * \param context The context in which the instance is created.
++   */
+   V8_WARN_UNUSED_RESULT MaybeLocal<Object> NewInstance(Local<Context> context);
+ 
+   /**
+    * Sets an accessor on the object template.
+    *
+    * Whenever the property with the given name is accessed on objects
+    * created from this ObjectTemplate the getter and setter callbacks
+    * are called instead of getting and setting the property directly
+    * on the JavaScript object.
+    *
+@@ -943,20 +950,55 @@ class V8_EXPORT ObjectTemplate : public Template {
+   V8_INLINE static ObjectTemplate* Cast(Data* data);
+ 
+  private:
+   ObjectTemplate();
+   static Local<ObjectTemplate> New(internal::Isolate* isolate,
+                                    Local<FunctionTemplate> constructor);
+   static void CheckCast(Data* that);
+   friend class FunctionTemplate;
+ };
+ 
++/**
++ * A template to create dictionary objects at runtime.
++ */
++class V8_EXPORT DictionaryTemplate final {
++ public:
++  /** Creates a new template. Also declares data properties that can be passed
++   * on instantiation of the template. Properties can only be declared on
++   * construction and are then immutable. The values are passed on creating the
++   * object via `NewInstance()`.
++   *
++   * \param names the keys that can be passed on instantiation.
++   */
++  static Local<DictionaryTemplate> New(
++      Isolate* isolate, MemorySpan<const std::string_view> names);
++
++  /**
++   * Creates a new instance of this template.
++   *
++   * \param context The context used to create the dictionary object.
++   * \param property_values Values of properties that were declared using
++   *   `DeclareDataProperties()`. The span only passes values and expectes the
++   *   order to match the declaration. Non-existent properties are signaled via
++   *   empty `MaybeLocal`s.
++   */
++  V8_WARN_UNUSED_RESULT Local<Object> NewInstance(
++      Local<Context> context, MemorySpan<MaybeLocal<Value>> property_values);
++
++  V8_INLINE static DictionaryTemplate* Cast(Data* data);
++
++ private:
++  static void CheckCast(Data* that);
++
++  DictionaryTemplate();
++};
++
+ /**
+  * A Signature specifies which receiver is valid for a function.
+  *
+  * A receiver matches a given signature if the receiver (or any of its
+  * hidden prototypes) was created from the signature's FunctionTemplate, or
+  * from a FunctionTemplate that inherits directly or indirectly from the
+  * signature's FunctionTemplate.
+  */
+ class V8_EXPORT Signature : public Data {
+  public:
+@@ -988,20 +1030,27 @@ FunctionTemplate* FunctionTemplate::Cast(Data* data) {
+   return reinterpret_cast<FunctionTemplate*>(data);
+ }
+ 
+ ObjectTemplate* ObjectTemplate::Cast(Data* data) {
+ #ifdef V8_ENABLE_CHECKS
+   CheckCast(data);
+ #endif
+   return reinterpret_cast<ObjectTemplate*>(data);
+ }
+ 
++DictionaryTemplate* DictionaryTemplate::Cast(Data* data) {
++#ifdef V8_ENABLE_CHECKS
++  CheckCast(data);
++#endif
++  return reinterpret_cast<DictionaryTemplate*>(data);
++}
++
+ Signature* Signature::Cast(Data* data) {
+ #ifdef V8_ENABLE_CHECKS
+   CheckCast(data);
+ #endif
+   return reinterpret_cast<Signature*>(data);
+ }
+ 
+ }  // namespace v8
+ 
+ #endif  // INCLUDE_V8_TEMPLATE_H_

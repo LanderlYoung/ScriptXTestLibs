@@ -1,0 +1,57 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 0d82f4b990a..c3b04f30899 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -729,20 +729,29 @@ class VirtualAddressSpace {
+   size_t size() const { return size_; }
+ 
+   /**
+    * The maximum page permissions that pages allocated inside this space can
+    * obtain.
+    *
+    * \returns the maximum page permissions.
+    */
+   PagePermissions max_page_permissions() const { return max_page_permissions_; }
+ 
++  /**
++   * Whether the |address| is inside the address space managed by this instance.
++   *
++   * \returns true if it is inside the address space, false if not.
++   */
++  bool Contains(Address address) const {
++    return (address >= base()) && (address < base() + size());
++  }
++
+   /**
+    * Sets the random seed so that GetRandomPageAddress() will generate
+    * repeatable sequences of random addresses.
+    *
+    * \param The seed for the PRNG.
+    */
+   virtual void SetRandomSeed(int64_t seed) = 0;
+ 
+   /**
+    * Returns a random address inside this address space, suitable for page
+@@ -1225,21 +1234,21 @@ class Platform {
+    * the epoch.
+    **/
+   virtual double MonotonicallyIncreasingTime() = 0;
+ 
+   /**
+    * Current wall-clock time in milliseconds since epoch. Use
+    * CurrentClockTimeMillisHighResolution() when higher precision is
+    * required.
+    */
+   virtual int64_t CurrentClockTimeMilliseconds() {
+-    return floor(CurrentClockTimeMillis());
++    return static_cast<int64_t>(floor(CurrentClockTimeMillis()));
+   }
+ 
+   /**
+    * This function is deprecated and will be deleted. Use either
+    * CurrentClockTimeMilliseconds() or
+    * CurrentClockTimeMillisecondsHighResolution().
+    */
+   virtual double CurrentClockTimeMillis() = 0;
+ 
+   /**

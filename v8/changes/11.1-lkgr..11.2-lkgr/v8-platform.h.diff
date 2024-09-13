@@ -1,0 +1,95 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 32898e7ef92..750131d4c97 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -1,20 +1,22 @@
+ // Copyright 2013 the V8 project authors. All rights reserved.
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+ #ifndef V8_V8_PLATFORM_H_
+ #define V8_V8_PLATFORM_H_
+ 
++#include <math.h>
+ #include <stddef.h>
+ #include <stdint.h>
+ #include <stdlib.h>  // For abort.
++
+ #include <memory>
+ #include <string>
+ 
+ #include "v8config.h"  // NOLINT(build/include_directory)
+ 
+ namespace v8 {
+ 
+ class Isolate;
+ 
+ // Valid priorities supported by the task scheduling infrastructure.
+@@ -535,21 +537,21 @@ class PageAllocator {
+ // Opaque type representing a handle to a shared memory region.
+ using PlatformSharedMemoryHandle = intptr_t;
+ static constexpr PlatformSharedMemoryHandle kInvalidSharedMemoryHandle = -1;
+ 
+ // Conversion routines from the platform-dependent shared memory identifiers
+ // into the opaque PlatformSharedMemoryHandle type. These use the underlying
+ // types (e.g. unsigned int) instead of the typedef'd ones (e.g. mach_port_t)
+ // to avoid pulling in large OS header files into this header file. Instead,
+ // the users of these routines are expected to include the respecitve OS
+ // headers in addition to this one.
+-#if V8_OS_MACOS
++#if V8_OS_DARWIN
+ // Convert between a shared memory handle and a mach_port_t referencing a memory
+ // entry object.
+ inline PlatformSharedMemoryHandle SharedMemoryHandleFromMachMemoryEntry(
+     unsigned int port) {
+   return static_cast<PlatformSharedMemoryHandle>(port);
+ }
+ inline unsigned int MachMemoryEntryFromSharedMemoryHandle(
+     PlatformSharedMemoryHandle handle) {
+   return static_cast<unsigned int>(handle);
+ }
+@@ -1075,25 +1077,42 @@ class Platform {
+   /**
+    * Monotonically increasing time in seconds from an arbitrary fixed point in
+    * the past. This function is expected to return at least
+    * millisecond-precision values. For this reason,
+    * it is recommended that the fixed point be no further in the past than
+    * the epoch.
+    **/
+   virtual double MonotonicallyIncreasingTime() = 0;
+ 
+   /**
+-   * Current wall-clock time in milliseconds since epoch.
+-   * This function is expected to return at least millisecond-precision values.
++   * Current wall-clock time in milliseconds since epoch. Use
++   * CurrentClockTimeMillisHighResolution() when higher precision is
++   * required.
++   */
++  virtual int64_t CurrentClockTimeMilliseconds() {
++    return floor(CurrentClockTimeMillis());
++  }
++
++  /**
++   * This function is deprecated and will be deleted. Use either
++   * CurrentClockTimeMilliseconds() or
++   * CurrentClockTimeMillisecondsHighResolution().
+    */
+   virtual double CurrentClockTimeMillis() = 0;
+ 
++  /**
++   * Same as CurrentClockTimeMilliseconds(), but with more precision.
++   */
++  virtual double CurrentClockTimeMillisecondsHighResolution() {
++    return CurrentClockTimeMillis();
++  }
++
+   typedef void (*StackTracePrinter)();
+ 
+   /**
+    * Returns a function pointer that print a stack trace of the current stack
+    * on invocation. Disables printing of the stack trace if nullptr.
+    */
+   virtual StackTracePrinter GetStackTracePrinter() { return nullptr; }
+ 
+   /**
+    * Returns an instance of a v8::TracingController. This must be non-nullptr.

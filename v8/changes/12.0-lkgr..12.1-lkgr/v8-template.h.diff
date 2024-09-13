@@ -1,0 +1,167 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index 11296cd4889..c18baf95c2e 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -54,56 +54,60 @@ class V8_EXPORT Template : public Data {
+            PropertyAttribute attributes = None);
+   void SetPrivate(Local<Private> name, Local<Data> value,
+                   PropertyAttribute attributes = None);
+   V8_INLINE void Set(Isolate* isolate, const char* name, Local<Data> value,
+                      PropertyAttribute attributes = None);
+ 
+   void SetAccessorProperty(
+       Local<Name> name,
+       Local<FunctionTemplate> getter = Local<FunctionTemplate>(),
+       Local<FunctionTemplate> setter = Local<FunctionTemplate>(),
+-      PropertyAttribute attribute = None, AccessControl settings = DEFAULT);
++      PropertyAttribute attribute = None);
+ 
+   /**
+    * Whenever the property with the given name is accessed on objects
+    * created from this Template the getter and setter callbacks
+    * are called instead of getting and setting the property directly
+    * on the JavaScript object.
+    *
+    * \param name The name of the property for which an accessor is added.
+    * \param getter The callback to invoke when getting the property.
+    * \param setter The callback to invoke when setting the property.
+    * \param data A piece of data that will be passed to the getter and setter
+    *   callbacks whenever they are invoked.
+-   * \param settings Access control settings for the accessor. This is a bit
+-   *   field consisting of one of more of
+-   *   DEFAULT = 0, ALL_CAN_READ = 1, or ALL_CAN_WRITE = 2.
+-   *   The default is to not allow cross-context access.
+-   *   ALL_CAN_READ means that all cross-context reads are allowed.
+-   *   ALL_CAN_WRITE means that all cross-context writes are allowed.
+-   *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+-   *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    */
++  V8_DEPRECATE_SOON("Use SetNativeDataProperty without AccessControl instead")
++  void SetNativeDataProperty(
++      Local<String> name, AccessorGetterCallback getter,
++      AccessorSetterCallback setter, Local<Value> data,
++      PropertyAttribute attribute, AccessControl settings,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
++  V8_DEPRECATE_SOON("Use SetNativeDataProperty without AccessControl instead")
++  void SetNativeDataProperty(
++      Local<Name> name, AccessorNameGetterCallback getter,
++      AccessorNameSetterCallback setter, Local<Value> data,
++      PropertyAttribute attribute, AccessControl settings,
++      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
++      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      AccessControl settings = DEFAULT,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      AccessControl settings = DEFAULT,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Like SetNativeDataProperty, but V8 will replace the native data property
+    * with a real data property on first access.
+    */
+   void SetLazyDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+@@ -597,41 +601,36 @@ class V8_EXPORT FunctionTemplate : public Template {
+ /**
+  * Configuration flags for v8::NamedPropertyHandlerConfiguration or
+  * v8::IndexedPropertyHandlerConfiguration.
+  */
+ enum class PropertyHandlerFlags {
+   /**
+    * None.
+    */
+   kNone = 0,
+ 
+-  /**
+-   * See ALL_CAN_READ above.
+-   */
+-  kAllCanRead = 1,
+-
+   /** Will not call into interceptor for properties on the receiver or prototype
+    * chain, i.e., only call into interceptor for properties that do not exist.
+    * Currently only valid for named interceptors.
+    */
+-  kNonMasking = 1 << 1,
++  kNonMasking = 1,
+ 
+   /**
+    * Will not call into interceptor for symbol lookup.  Only meaningful for
+    * named interceptors.
+    */
+-  kOnlyInterceptStrings = 1 << 2,
++  kOnlyInterceptStrings = 1 << 1,
+ 
+   /**
+    * The getter, query, enumerator callbacks do not produce side effects.
+    */
+-  kHasNoSideEffect = 1 << 3,
++  kHasNoSideEffect = 1 << 2,
+ };
+ 
+ struct NamedPropertyHandlerConfiguration {
+   NamedPropertyHandlerConfiguration(
+       GenericNamedPropertyGetterCallback getter,
+       GenericNamedPropertySetterCallback setter,
+       GenericNamedPropertyQueryCallback query,
+       GenericNamedPropertyDeleterCallback deleter,
+       GenericNamedPropertyEnumeratorCallback enumerator,
+       GenericNamedPropertyDefinerCallback definer,
+@@ -788,43 +787,33 @@ class V8_EXPORT ObjectTemplate : public Template {
+    * Whenever the property with the given name is accessed on objects
+    * created from this ObjectTemplate the getter and setter callbacks
+    * are called instead of getting and setting the property directly
+    * on the JavaScript object.
+    *
+    * \param name The name of the property for which an accessor is added.
+    * \param getter The callback to invoke when getting the property.
+    * \param setter The callback to invoke when setting the property.
+    * \param data A piece of data that will be passed to the getter and setter
+    *   callbacks whenever they are invoked.
+-   * \param settings Access control settings for the accessor. This is a bit
+-   *   field consisting of one of more of
+-   *   DEFAULT = 0, ALL_CAN_READ = 1, or ALL_CAN_WRITE = 2.
+-   *   The default is to not allow cross-context access.
+-   *   ALL_CAN_READ means that all cross-context reads are allowed.
+-   *   ALL_CAN_WRITE means that all cross-context writes are allowed.
+-   *   The combination ALL_CAN_READ | ALL_CAN_WRITE can be used to allow all
+-   *   cross-context access.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    */
+   void SetAccessor(
+       Local<String> name, AccessorGetterCallback getter,
+       AccessorSetterCallback setter = nullptr,
+-      Local<Value> data = Local<Value>(), AccessControl settings = DEFAULT,
+-      PropertyAttribute attribute = None,
++      Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetAccessor(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+-      Local<Value> data = Local<Value>(), AccessControl settings = DEFAULT,
+-      PropertyAttribute attribute = None,
++      Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Sets a named property handler on the object template.
+    *
+    * Whenever a property whose name is a string or a symbol is accessed on
+    * objects created from this object template, the provided callback is
+    * invoked instead of accessing the property directly on the JavaScript
+    * object.

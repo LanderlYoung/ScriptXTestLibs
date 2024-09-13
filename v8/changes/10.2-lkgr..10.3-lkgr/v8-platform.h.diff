@@ -1,0 +1,110 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 91b3fd9cc3f..efe5402969b 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -422,20 +422,31 @@ class PageAllocator {
+    */
+   virtual bool ReleasePages(void* address, size_t length,
+                             size_t new_length) = 0;
+ 
+   /**
+    * Sets permissions on pages in an allocated range.
+    */
+   virtual bool SetPermissions(void* address, size_t length,
+                               Permission permissions) = 0;
+ 
++  /**
++   * Recommits discarded pages in the given range with given permissions.
++   * Discarded pages must be recommitted with their original permissions
++   * before they are used again.
++   */
++  virtual bool RecommitPages(void* address, size_t length,
++                             Permission permissions) {
++    // TODO(v8:12797): make it pure once it's implemented on Chromium side.
++    return false;
++  }
++
+   /**
+    * Frees memory in the given [address, address + size) range. address and size
+    * should be operating system page-aligned. The next write to this
+    * memory area brings the memory transparently back. This should be treated as
+    * a hint to the OS that the pages are no longer needed. It does not guarantee
+    * that the pages will be discarded immediately or at all.
+    */
+   virtual bool DiscardSystemPages(void* address, size_t size) { return true; }
+ 
+   /**
+@@ -691,29 +702,33 @@ class VirtualAddressSpace {
+    * have been obtained through a call to AllocatePages.
+    *
+    * \param size The size in bytes of the region to free. This must match the
+    * size passed to AllocatePages when the pages were allocated.
+    */
+   virtual void FreePages(Address address, size_t size) = 0;
+ 
+   /**
+    * Sets permissions of all allocated pages in the given range.
+    *
++   * This operation can fail due to OOM, in which case false is returned. If
++   * the operation fails for a reason other than OOM, this function will
++   * terminate the process as this implies a bug in the client.
++   *
+    * \param address The start address of the range. Must be aligned to
+    * page_size().
+    *
+    * \param size The size in bytes of the range. Must be a multiple
+    * of page_size().
+    *
+    * \param permissions The new permissions for the range.
+    *
+-   * \returns true on success, false otherwise.
++   * \returns true on success, false on OOM.
+    */
+   virtual V8_WARN_UNUSED_RESULT bool SetPagePermissions(
+       Address address, size_t size, PagePermissions permissions) = 0;
+ 
+   /**
+    * Creates a guard region at the specified address.
+    *
+    * Guard regions are guaranteed to cause a fault when accessed and generally
+    * do not count towards any memory consumption limits. Further, allocating
+    * guard regions can usually not fail in subspaces if the region does not
+@@ -813,20 +828,38 @@ class VirtualAddressSpace {
+   virtual std::unique_ptr<VirtualAddressSpace> AllocateSubspace(
+       Address hint, size_t size, size_t alignment,
+       PagePermissions max_page_permissions) = 0;
+ 
+   //
+   // TODO(v8) maybe refactor the methods below before stabilizing the API. For
+   // example by combining them into some form of page operation method that
+   // takes a command enum as parameter.
+   //
+ 
++  /**
++   * Recommits discarded pages in the given range with given permissions.
++   * Discarded pages must be recommitted with their original permissions
++   * before they are used again.
++   *
++   * \param address The start address of the range. Must be aligned to
++   * page_size().
++   *
++   * \param size The size in bytes of the range. Must be a multiple
++   * of page_size().
++   *
++   * \param permissions The permissions for the range that the pages must have.
++   *
++   * \returns true on success, false otherwise.
++   */
++  virtual V8_WARN_UNUSED_RESULT bool RecommitPages(
++      Address address, size_t size, PagePermissions permissions) = 0;
++
+   /**
+    * Frees memory in the given [address, address + size) range. address and
+    * size should be aligned to the page_size(). The next write to this memory
+    * area brings the memory transparently back. This should be treated as a
+    * hint to the OS that the pages are no longer needed. It does not guarantee
+    * that the pages will be discarded immediately or at all.
+    *
+    * \returns true on success, false otherwise. Since this method is only a
+    * hint, a successful invocation does not imply that pages have been removed.
+    */

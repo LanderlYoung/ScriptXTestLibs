@@ -1,0 +1,60 @@
+diff --git a/include/v8-platform.h b/include/v8-platform.h
+index 32a82f881e7..32898e7ef92 100644
+--- a/include/v8-platform.h
++++ b/include/v8-platform.h
+@@ -278,20 +278,22 @@ class ConvertableToTraceFormat {
+    * escaped. There is no processing applied to the content after it is
+    * appended.
+    */
+   virtual void AppendAsTraceFormat(std::string* out) const = 0;
+ };
+ 
+ /**
+  * V8 Tracing controller.
+  *
+  * Can be implemented by an embedder to record trace events from V8.
++ *
++ * Will become obsolete in Perfetto SDK build (v8_use_perfetto = true).
+  */
+ class TracingController {
+  public:
+   virtual ~TracingController() = default;
+ 
+   // In Perfetto mode, trace events are written using Perfetto's Track Event
+   // API directly without going through the embedder. However, it is still
+   // possible to observe tracing being enabled and disabled.
+ #if !defined(V8_USE_PERFETTO)
+   /**
+@@ -341,24 +343,30 @@ class TracingController {
+                                         const char* name, uint64_t handle) {}
+ #endif  // !defined(V8_USE_PERFETTO)
+ 
+   class TraceStateObserver {
+    public:
+     virtual ~TraceStateObserver() = default;
+     virtual void OnTraceEnabled() = 0;
+     virtual void OnTraceDisabled() = 0;
+   };
+ 
+-  /** Adds tracing state change observer. */
++  /**
++   * Adds tracing state change observer.
++   * Does nothing in Perfetto SDK build (v8_use_perfetto = true).
++   */
+   virtual void AddTraceStateObserver(TraceStateObserver*) {}
+ 
+-  /** Removes tracing state change observer. */
++  /**
++   * Removes tracing state change observer.
++   * Does nothing in Perfetto SDK build (v8_use_perfetto = true).
++   */
+   virtual void RemoveTraceStateObserver(TraceStateObserver*) {}
+ };
+ 
+ /**
+  * A V8 memory page allocator.
+  *
+  * Can be implemented by an embedder to manage large host OS allocations.
+  */
+ class PageAllocator {
+  public:

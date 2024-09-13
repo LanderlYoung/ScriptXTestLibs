@@ -1,0 +1,192 @@
+diff --git a/include/v8-template.h b/include/v8-template.h
+index f1435541f1e..4d8386865e6 100644
+--- a/include/v8-template.h
++++ b/include/v8-template.h
+@@ -73,41 +73,20 @@ class V8_EXPORT Template : public Data {
+    * on the JavaScript object.
+    *
+    * \param name The name of the property for which an accessor is added.
+    * \param getter The callback to invoke when getting the property.
+    * \param setter The callback to invoke when setting the property.
+    * \param data A piece of data that will be passed to the getter and setter
+    *   callbacks whenever they are invoked.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    */
+-  V8_DEPRECATED("Use SetNativeDataProperty without AccessControl instead")
+-  void SetNativeDataProperty(
+-      Local<String> name, AccessorGetterCallback getter,
+-      AccessorSetterCallback setter, Local<Value> data,
+-      PropertyAttribute attribute, AccessControl settings,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+-  V8_DEPRECATED("Use SetNativeDataProperty without AccessControl instead")
+-  void SetNativeDataProperty(
+-      Local<Name> name, AccessorNameGetterCallback getter,
+-      AccessorNameSetterCallback setter, Local<Value> data,
+-      PropertyAttribute attribute, AccessControl settings,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+-  V8_DEPRECATED("Use SetNativeDataProperty with Local<Name> instead")
+-  void SetNativeDataProperty(
+-      Local<String> name, AccessorGetterCallback getter,
+-      AccessorSetterCallback setter = nullptr,
+-      Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+   void SetNativeDataProperty(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Like SetNativeDataProperty, but V8 will replace the native data property
+    * with a real data property on first access.
+@@ -488,22 +467,22 @@ enum class ConstructorBehavior { kThrow, kAllow };
+  *    v8::Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New(isolate);
+  *    t->Set(isolate, "func_property", v8::Number::New(isolate, 1));
+  *
+  *    v8::Local<v8::Template> proto_t = t->PrototypeTemplate();
+  *    proto_t->Set(isolate,
+  *                 "proto_method",
+  *                 v8::FunctionTemplate::New(isolate, InvokeCallback));
+  *    proto_t->Set(isolate, "proto_const", v8::Number::New(isolate, 2));
+  *
+  *    v8::Local<v8::ObjectTemplate> instance_t = t->InstanceTemplate();
+- *    instance_t->SetAccessor(
+-          String::NewFromUtf8Literal(isolate, "instance_accessor"),
++ *    instance_t->SetNativeDataProperty(
++ *        String::NewFromUtf8Literal(isolate, "instance_accessor"),
+  *        InstanceAccessorCallback);
+  *    instance_t->SetHandler(
+  *        NamedPropertyHandlerConfiguration(PropertyHandlerCallback));
+  *    instance_t->Set(String::NewFromUtf8Literal(isolate, "instance_property"),
+  *                    Number::New(isolate, 3));
+  *
+  *    v8::Local<v8::Function> function = t->GetFunction();
+  *    v8::Local<v8::Object> instance = function->NewInstance();
+  * \endcode
+  *
+@@ -761,21 +740,21 @@ struct NamedPropertyHandlerConfiguration {
+       : getter(reinterpret_cast<void*>(getter)),
+         setter(reinterpret_cast<void*>(setter)),
+         query(reinterpret_cast<void*>(query)),
+         deleter(reinterpret_cast<void*>(deleter)),
+         enumerator(enumerator),
+         definer(reinterpret_cast<void*>(definer)),
+         descriptor(reinterpret_cast<void*>(descriptor)),
+         data(data),
+         flags(WithNewSignatureFlag(flags)) {}
+ 
+-  V8_DEPRECATE_SOON(
++  V8_DEPRECATED(
+       "Provide interceptor callbacks with new signatures instead "
+       "(NamedPropertyXxxCallback)")
+   NamedPropertyHandlerConfiguration(
+       GenericNamedPropertyGetterCallback getter,
+       GenericNamedPropertySetterCallback setter,
+       GenericNamedPropertyQueryCallback query,
+       GenericNamedPropertyDeleterCallback deleter,
+       GenericNamedPropertyEnumeratorCallback enumerator,
+       GenericNamedPropertyDefinerCallback definer,
+       GenericNamedPropertyDescriptorCallback descriptor,
+@@ -802,21 +781,21 @@ struct NamedPropertyHandlerConfiguration {
+       : getter(reinterpret_cast<void*>(getter)),
+         setter(reinterpret_cast<void*>(setter)),
+         query(reinterpret_cast<void*>(query)),
+         deleter(reinterpret_cast<void*>(deleter)),
+         enumerator(enumerator),
+         definer(nullptr),
+         descriptor(nullptr),
+         data(data),
+         flags(WithNewSignatureFlag(flags)) {}
+ 
+-  V8_DEPRECATE_SOON(
++  V8_DEPRECATED(
+       "Provide interceptor callbacks with new signatures instead "
+       "(NamedPropertyXxxCallback)")
+   explicit NamedPropertyHandlerConfiguration(
+       GenericNamedPropertyGetterCallback getter,
+       GenericNamedPropertySetterCallback setter = nullptr,
+       GenericNamedPropertyQueryCallback query = nullptr,
+       GenericNamedPropertyDeleterCallback deleter = nullptr,
+       GenericNamedPropertyEnumeratorCallback enumerator = nullptr,
+       Local<Value> data = Local<Value>(),
+       PropertyHandlerFlags flags = PropertyHandlerFlags::kNone)
+@@ -842,21 +821,21 @@ struct NamedPropertyHandlerConfiguration {
+       : getter(reinterpret_cast<void*>(getter)),
+         setter(reinterpret_cast<void*>(setter)),
+         query(nullptr),
+         deleter(reinterpret_cast<void*>(deleter)),
+         enumerator(enumerator),
+         definer(reinterpret_cast<void*>(definer)),
+         descriptor(reinterpret_cast<void*>(descriptor)),
+         data(data),
+         flags(WithNewSignatureFlag(flags)) {}
+ 
+-  V8_DEPRECATE_SOON(
++  V8_DEPRECATED(
+       "Provide interceptor callbacks with new signatures instead "
+       "(NamedPropertyXxxCallback)")
+   NamedPropertyHandlerConfiguration(
+       GenericNamedPropertyGetterCallback getter,
+       GenericNamedPropertySetterCallback setter,
+       GenericNamedPropertyDescriptorCallback descriptor,
+       GenericNamedPropertyDeleterCallback deleter,
+       GenericNamedPropertyEnumeratorCallback enumerator,
+       GenericNamedPropertyDefinerCallback definer,
+       Local<Value> data = Local<Value>(),
+@@ -1056,27 +1035,21 @@ class V8_EXPORT ObjectTemplate : public Template {
+    * on the JavaScript object.
+    *
+    * \param name The name of the property for which an accessor is added.
+    * \param getter The callback to invoke when getting the property.
+    * \param setter The callback to invoke when setting the property.
+    * \param data A piece of data that will be passed to the getter and setter
+    *   callbacks whenever they are invoked.
+    * \param attribute The attributes of the property for which an accessor
+    *   is added.
+    */
+-  V8_DEPRECATED("Use SetAccessor with Local<Name> instead")
+-  void SetAccessor(
+-      Local<String> name, AccessorGetterCallback getter,
+-      AccessorSetterCallback setter = nullptr,
+-      Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+-      SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+-      SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
++  V8_DEPRECATE_SOON("Use SetNativeDataProperty instead")
+   void SetAccessor(
+       Local<Name> name, AccessorNameGetterCallback getter,
+       AccessorNameSetterCallback setter = nullptr,
+       Local<Value> data = Local<Value>(), PropertyAttribute attribute = None,
+       SideEffectType getter_side_effect_type = SideEffectType::kHasSideEffect,
+       SideEffectType setter_side_effect_type = SideEffectType::kHasSideEffect);
+ 
+   /**
+    * Sets a named property handler on the object template.
+    *
+@@ -1099,21 +1072,21 @@ class V8_EXPORT ObjectTemplate : public Template {
+    *
+    * \param getter The callback to invoke when getting a property.
+    * \param setter The callback to invoke when setting a property.
+    * \param query The callback to invoke to check if an object has a property.
+    * \param deleter The callback to invoke when deleting a property.
+    * \param enumerator The callback to invoke to enumerate all the indexed
+    *   properties of an object.
+    * \param data A piece of data that will be passed to the callbacks
+    *   whenever they are invoked.
+    */
+-  V8_DEPRECATE_SOON("Use SetHandler instead")
++  V8_DEPRECATED("Use SetHandler instead")
+   void SetIndexedPropertyHandler(
+       IndexedPropertyGetterCallback getter,
+       IndexedPropertySetterCallback setter = nullptr,
+       IndexedPropertyQueryCallback query = nullptr,
+       IndexedPropertyDeleterCallback deleter = nullptr,
+       IndexedPropertyEnumeratorCallback enumerator = nullptr,
+       Local<Value> data = Local<Value>()) {
+     SetHandler(IndexedPropertyHandlerConfiguration(getter, setter, query,
+                                                    deleter, enumerator, data));
+   }
